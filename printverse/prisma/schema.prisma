@@ -1,0 +1,100 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  prints    PrintOrder[]
+  shop      Shop?
+}
+
+model Shop {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  admin     User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminId   String   @unique
+  
+  orders    PrintOrder[]
+  printAgent PrintAgent?
+}
+
+model PrintOrder {
+  id              String   @id @default(cuid())
+  
+  // File Information
+  filename        String
+  fileUrl         String   // URL to stored file
+  filesize        Int      // in bytes
+  
+  // Print Settings
+  copies          Int      @default(1)
+  colorMode       String   @default("color") // "color" or "bw"
+  paperSize       String   @default("a4") // "a4", "a3", "letter", "legal"
+  doubleSided     Boolean  @default(true)
+  binding         String   @default("none") // "none", "spiral", "comb", "staple", "perfect"
+  lamination      String   @default("none") // "none", "matte", "glossy", "semi"
+  margin          String   @default("normal") // "none", "narrow", "normal", "wide"
+  quality         String   @default("standard") // "standard", "high", "photo"
+  
+  // Order Status
+  status          String   @default("Awaiting Confirmation") // "Awaiting Confirmation", "Confirmed", "Printing", "Printed", "Ready for Pickup", "Collected"
+  
+  // Relations
+  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       String
+  
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId          String
+  
+  printAgent      PrintAgent?
+  
+  // Timestamps & QR Code
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  confirmedAt     DateTime?
+  printedAt       DateTime?
+  qrCode          String?  // For pickup identification
+  
+  @@index([studentId])
+  @@index([shopId])
+  @@index([status])
+}
+
+model PrintAgent {
+  id              String   @id @default(cuid())
+  name            String
+  agentKey        String   @unique // For authentication
+  status          String   @default("offline") // "online", "offline", "printing"
+  lastSeen        DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId          String   @unique
+  
+  currentOrder    PrintOrder? @relation(fields: [currentOrderId], references: [id])
+  currentOrderId  String? @unique
+}
